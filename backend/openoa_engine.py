@@ -11,6 +11,9 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "OpenOA" / "examples" / "data" / "la_haute_borne"
 META_FILE = BASE_DIR / "OpenOA" / "examples" / "data" / "plant_meta.json"
 
+# 🔥 Global cache
+CACHED_RESULT = None
+
 
 def load_plant():
     with open(META_FILE) as f:
@@ -19,13 +22,11 @@ def load_plant():
     metadata["meter"]["time"] = "time_utc"
     metadata["curtail"]["time"] = "time_utc"
 
-    # SCADA
     scada_df = pd.read_csv(DATA_DIR / "la-haute-borne-data-2014-2015.csv")
     scada_df["Date_time"] = pd.to_datetime(
         scada_df["Date_time"], utc=True
     ).dt.tz_convert(None)
 
-    # Plant data
     plant_df = pd.read_csv(DATA_DIR / "plant_data.csv")
     plant_df["time_utc"] = pd.to_datetime(
         plant_df["time_utc"], utc=True
@@ -49,7 +50,15 @@ def load_plant():
     return plant
 
 
-def run_monte_carlo_aep(num_sim=100):
+def initialize_cached_result(num_sim=10):
+    """
+    Run Monte Carlo ONCE at startup and cache result.
+    """
+    global CACHED_RESULT
+
+    if CACHED_RESULT is not None:
+        return CACHED_RESULT
+
     plant = load_plant()
 
     aep = MonteCarloAEP(plant)
@@ -57,19 +66,27 @@ def run_monte_carlo_aep(num_sim=100):
 
     df = aep.results
 
-    # Extract distribution
     aep_values = df["aep_GWh"].values.tolist()
 
-    # Summary statistics
     mean_aep = float(np.mean(aep_values))
     p50 = float(np.percentile(aep_values, 50))
     p90 = float(np.percentile(aep_values, 10))
     std_dev = float(np.std(aep_values))
 
-    return {
+    CACHED_RESULT = {
         "distribution": aep_values,
         "mean_aep_GWh": mean_aep,
         "p50_GWh": p50,
         "p90_GWh": p90,
         "std_dev": std_dev,
+        "num_simulations": num_sim
     }
+
+    return CACHED_RESULT
+
+
+def get_cached_result():
+    """
+    Return precomputed Monte Carlo result.
+    """
+    return CACHED_RESULT

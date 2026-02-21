@@ -1,10 +1,13 @@
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, Query
+from fastapi import FastAPI
 from pathlib import Path
 import pandas as pd
 
-# Import OpenOA AEP service
-from backend.openoa_engine import run_monte_carlo_aep
+# 🔥 Import new cached engine functions
+from backend.openoa_engine import (
+    initialize_cached_result,
+    get_cached_result,
+)
 
 app = FastAPI(title="OpenOA Analysis API")
 
@@ -14,8 +17,8 @@ app = FastAPI(title="OpenOA Analysis API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",  # local development
-        "https://openoa-monte-carlo-dashboard.vercel.app",  # production frontend
+        "http://localhost:5173",
+        "https://openoa-monte-carlo-dashboard.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -24,6 +27,20 @@ app.add_middleware(
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "OpenOA" / "examples" / "data" / "la_haute_borne"
+
+
+# ===============================
+# STARTUP EVENT (RUN ONCE)
+# ===============================
+@app.on_event("startup")
+def startup_event():
+    """
+    Run Monte Carlo ONCE at startup.
+    Uses small simulation count to stay within Render memory limits.
+    """
+    print("Initializing Monte Carlo cache...")
+    initialize_cached_result(num_sim=10)
+    print("Monte Carlo cache ready.")
 
 
 @app.get("/")
@@ -66,19 +83,16 @@ def run_basic_analysis():
 
 
 # ===============================
-# MONTE CARLO AEP ANALYSIS
+# MONTE CARLO AEP ANALYSIS (CACHED)
 # ===============================
 @app.get("/analysis/aep")
-def get_aep_analysis(
-    num_sim: int = Query(100, ge=10, le=5000)
-):
+def get_aep_analysis():
     """
-    Runs full OpenOA Monte Carlo AEP analysis.
-    Accepts num_sim as query parameter.
-    Returns distribution + summary statistics + risk interpretation.
+    Returns precomputed Monte Carlo AEP results.
+    Prevents heavy recomputation on every request.
     """
 
-    results = run_monte_carlo_aep(num_sim=num_sim)
+    results = get_cached_result()
 
     mean = results["mean_aep_GWh"]
     p50 = results["p50_GWh"]
@@ -104,9 +118,7 @@ def get_aep_analysis(
         "level": risk_level,
         "spread": round(spread, 2),
         "description": description,
-        "color": color
+        "color": color,
     }
-
-    results["num_simulations"] = num_sim
 
     return results
