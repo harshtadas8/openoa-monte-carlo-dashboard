@@ -17,41 +17,53 @@ function App() {
   const [numSim, setNumSim] = useState(100);
   const [loading, setLoading] = useState(false);
 
-  const fetchData = async (simulations) => {
-    setLoading(true);
-    try {
-      const res = await fetch(
-        `${BASE_URL}/analysis/aep?num_sim=${simulations}`
-      );
+  const fetchData = async () => {
+  setLoading(true);
 
-      if (!res.ok) {
-        throw new Error("Backend error");
-      }
+  try {
+    const res = await fetch(`${BASE_URL}/analysis/aep`);
 
-      const result = await res.json();
-      setData(result);
-    } catch (err) {
-      console.error("Fetch error:", err);
+    if (!res.ok) {
+      throw new Error("Backend error");
     }
-    setLoading(false);
-  };
 
+    const result = await res.json();
+    setData(result);
+
+  } catch (err) {
+    console.error("Fetch error:", err);
+
+    // 🔥 IMPORTANT: Stop spinner even on error
+    setData(null);
+
+  } finally {
+    setLoading(false);
+  }
+};
   useEffect(() => {
-    fetchData(numSim);
+    fetchData();
   }, []);
 
   const handleRunClick = () => {
-    fetchData(numSim);
+    fetchData();
   };
 
-  if (!data || loading) {
-    return (
-      <div className="loading-container">
-        <div className="spinner"></div>
-        <h2>Running Monte Carlo Simulation ({numSim} runs)...</h2>
-      </div>
-    );
-  }
+  if (loading) {
+  return (
+    <div className="loading-container">
+      <div className="spinner"></div>
+      <h2>Loading Monte Carlo Results...</h2>
+    </div>
+  );
+}
+
+if (!data) {
+  return (
+    <div className="loading-container">
+      <h2>Unable to load data. Please refresh.</h2>
+    </div>
+  );
+}
 
   const bins = 12;
   const min = Math.min(...data.distribution);
