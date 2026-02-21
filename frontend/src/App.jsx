@@ -8,6 +8,10 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+const BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  "https://openoa-monte-carlo-dashboard.onrender.com";
+
 function App() {
   const [data, setData] = useState(null);
   const [numSim, setNumSim] = useState(100);
@@ -17,12 +21,17 @@ function App() {
     setLoading(true);
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/analysis/aep?num_sim=${simulations}`
+        `${BASE_URL}/analysis/aep?num_sim=${simulations}`
       );
+
+      if (!res.ok) {
+        throw new Error("Backend error");
+      }
+
       const result = await res.json();
       setData(result);
     } catch (err) {
-      console.error(err);
+      console.error("Fetch error:", err);
     }
     setLoading(false);
   };
@@ -67,7 +76,6 @@ function App() {
       <div className="content">
         <h1 className="title">Monte Carlo AEP Risk Dashboard</h1>
 
-        {/* ================= CONTROL PANEL ================= */}
         <div className="control-wrapper">
           <div className="control-box">
             <label>Simulations</label>

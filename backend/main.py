@@ -8,9 +8,16 @@ from backend.openoa_engine import run_monte_carlo_aep
 
 app = FastAPI(title="OpenOA Analysis API")
 
+# ===============================
+# CORS CONFIGURATION
+# ===============================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:5173",  # local dev
+        "https://openoa-monte-carlo-dashboard.onrender.com",  # backend self
+        "https://your-frontend-domain.vercel.app",  # replace after frontend deploy
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -26,7 +33,7 @@ def root():
 
 
 # ===============================
-# OLD BASIC ANALYSIS (kept safe)
+# BASIC DATA ANALYSIS
 # ===============================
 @app.get("/analysis")
 def run_basic_analysis():
@@ -59,9 +66,9 @@ def run_basic_analysis():
     }
 
 
-# ===================================
-# REAL MONTE CARLO AEP ANALYSIS
-# ===================================
+# ===============================
+# MONTE CARLO AEP ANALYSIS
+# ===============================
 @app.get("/analysis/aep")
 def get_aep_analysis(
     num_sim: int = Query(100, ge=10, le=5000)
