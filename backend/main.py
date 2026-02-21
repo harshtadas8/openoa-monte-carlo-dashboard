@@ -14,9 +14,8 @@ app = FastAPI(title="OpenOA Analysis API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",  # local dev
-        "https://openoa-monte-carlo-dashboard.onrender.com",  # backend self
-        "https://your-frontend-domain.vercel.app",  # replace after frontend deploy
+        "http://localhost:5173",  # local development
+        "https://openoa-monte-carlo-dashboard.vercel.app",  # production frontend
     ],
     allow_credentials=True,
     allow_methods=["*"],
