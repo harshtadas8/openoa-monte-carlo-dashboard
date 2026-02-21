@@ -1,13 +1,8 @@
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
 from pathlib import Path
+import json
 import pandas as pd
-
-# 🔥 Import new cached engine functions
-from backend.openoa_engine import (
-    initialize_cached_result,
-    get_cached_result,
-)
 
 app = FastAPI(title="OpenOA Analysis API")
 
@@ -27,20 +22,7 @@ app.add_middleware(
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "OpenOA" / "examples" / "data" / "la_haute_borne"
-
-
-# ===============================
-# STARTUP EVENT (RUN ONCE)
-# ===============================
-@app.on_event("startup")
-def startup_event():
-    """
-    Run Monte Carlo ONCE at startup.
-    Uses small simulation count to stay within Render memory limits.
-    """
-    print("Initializing Monte Carlo cache...")
-    initialize_cached_result(num_sim=10)
-    print("Monte Carlo cache ready.")
+RESULT_FILE = BASE_DIR / "precomputed_result.json"
 
 
 @app.get("/")
@@ -60,39 +42,21 @@ def run_basic_analysis():
         utc=True
     )
 
-    total_rows = len(scada_df)
-    start_time = scada_df["Date_time"].min()
-    end_time = scada_df["Date_time"].max()
-
-    avg_wind_speed = scada_df["Ws_avg"].mean()
-    avg_power = scada_df["P_avg"].mean()
-    total_energy = scada_df["P_avg"].sum()
-    num_turbines = scada_df["Wind_turbine_name"].nunique()
-
     return {
-        "total_records": total_rows,
-        "time_range": {
-            "start": str(start_time),
-            "end": str(end_time),
-        },
-        "number_of_turbines": num_turbines,
-        "average_wind_speed": round(float(avg_wind_speed), 2),
-        "average_power": round(float(avg_power), 2),
-        "total_energy": round(float(total_energy), 2),
+        "total_records": len(scada_df),
+        "number_of_turbines": scada_df["Wind_turbine_name"].nunique(),
+        "average_wind_speed": round(float(scada_df["Ws_avg"].mean()), 2),
+        "average_power": round(float(scada_df["P_avg"].mean()), 2),
     }
 
 
 # ===============================
-# MONTE CARLO AEP ANALYSIS (CACHED)
+# MONTE CARLO AEP ANALYSIS (PRECOMPUTED)
 # ===============================
 @app.get("/analysis/aep")
 def get_aep_analysis():
-    """
-    Returns precomputed Monte Carlo AEP results.
-    Prevents heavy recomputation on every request.
-    """
-
-    results = get_cached_result()
+    with open(RESULT_FILE) as f:
+        results = json.load(f)
 
     mean = results["mean_aep_GWh"]
     p50 = results["p50_GWh"]
@@ -100,7 +64,6 @@ def get_aep_analysis():
 
     spread = p50 - p90
 
-    # Risk classification logic
     if spread < 0.5:
         risk_level = "Low Risk"
         description = "Stable production profile with low inter-annual variability."
