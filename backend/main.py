@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 
 # Import OpenOA AEP service
-from openoa_engine import run_monte_carlo_aep
+from backend.openoa_engine import run_monte_carlo_aep
 
 app = FastAPI(title="OpenOA Analysis API")
 
