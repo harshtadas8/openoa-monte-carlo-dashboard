@@ -1,5 +1,5 @@
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from pathlib import Path
 import json
 import pandas as pd
@@ -22,7 +22,6 @@ app.add_middleware(
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "OpenOA" / "examples" / "data" / "la_haute_borne"
-RESULT_FILE = BASE_DIR / "precomputed_result.json"
 
 
 @app.get("/")
@@ -51,11 +50,28 @@ def run_basic_analysis():
 
 
 # ===============================
-# MONTE CARLO AEP ANALYSIS (PRECOMPUTED)
+# MONTE CARLO AEP ANALYSIS (MULTI PRECOMPUTED)
 # ===============================
 @app.get("/analysis/aep")
-def get_aep_analysis():
-    with open(RESULT_FILE) as f:
+def get_aep_analysis(
+    num_sim: int = Query(100)
+):
+    """
+    Returns precomputed Monte Carlo results
+    based on requested simulation size.
+    """
+
+    allowed_simulations = [100, 300, 500, 1000]
+
+    if num_sim not in allowed_simulations:
+        num_sim = 100
+
+    result_file = BASE_DIR / f"precomputed_{num_sim}.json"
+
+    if not result_file.exists():
+        return {"error": f"Precomputed file for {num_sim} simulations not found."}
+
+    with open(result_file) as f:
         results = json.load(f)
 
     mean = results["mean_aep_GWh"]
@@ -83,5 +99,7 @@ def get_aep_analysis():
         "description": description,
         "color": color,
     }
+
+    results["num_simulations"] = num_sim
 
     return results

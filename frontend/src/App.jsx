@@ -17,54 +17,60 @@ function App() {
   const [numSim, setNumSim] = useState(100);
   const [loading, setLoading] = useState(false);
 
-  const fetchData = async () => {
-  setLoading(true);
+  const fetchData = async (simulations) => {
+    setLoading(true);
 
-  try {
-    const res = await fetch(`${BASE_URL}/analysis/aep`);
+    try {
+      const res = await fetch(
+        `${BASE_URL}/analysis/aep?num_sim=${simulations}`
+      );
 
-    if (!res.ok) {
-      throw new Error("Backend error");
+      if (!res.ok) {
+        throw new Error("Backend error");
+      }
+
+      const result = await res.json();
+      setData(result);
+
+    } catch (err) {
+      console.error("Fetch error:", err);
+      setData(null);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    const result = await res.json();
-    setData(result);
-
-  } catch (err) {
-    console.error("Fetch error:", err);
-
-    // 🔥 IMPORTANT: Stop spinner even on error
-    setData(null);
-
-  } finally {
-    setLoading(false);
-  }
-};
   useEffect(() => {
-    fetchData();
+    fetchData(numSim);
   }, []);
 
   const handleRunClick = () => {
-    fetchData();
+    fetchData(numSim);
   };
 
+  // ===============================
+  // Loading State
+  // ===============================
   if (loading) {
-  return (
-    <div className="loading-container">
-      <div className="spinner"></div>
-      <h2>Loading Monte Carlo Results...</h2>
-    </div>
-  );
-}
+    return (
+      <div className="loading-container">
+        <div className="spinner"></div>
+        <h2>Running Monte Carlo Simulation ({numSim} runs)...</h2>
+      </div>
+    );
+  }
 
-if (!data) {
-  return (
-    <div className="loading-container">
-      <h2>Unable to load data. Please refresh.</h2>
-    </div>
-  );
-}
+  if (!data) {
+    return (
+      <div className="loading-container">
+        <h2>Unable to load data. Please refresh.</h2>
+      </div>
+    );
+  }
 
+  // ===============================
+  // Histogram Calculation
+  // ===============================
   const bins = 12;
   const min = Math.min(...data.distribution);
   const max = Math.max(...data.distribution);

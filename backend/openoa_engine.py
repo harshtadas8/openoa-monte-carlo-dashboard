@@ -90,3 +90,26 @@ def get_cached_result():
     Return precomputed Monte Carlo result.
     """
     return CACHED_RESULT
+
+def run_monte_carlo_aep(num_sim=100):
+    plant = load_plant()
+
+    aep = MonteCarloAEP(plant)
+    aep.run(num_sim=num_sim)
+
+    df = aep.results
+
+    aep_values = df["aep_GWh"].values.tolist()
+
+    mean_aep = float(np.mean(aep_values))
+    p50 = float(np.percentile(aep_values, 50))
+    p90 = float(np.percentile(aep_values, 10))
+    std_dev = float(np.std(aep_values))
+
+    return {
+        "distribution": aep_values,
+        "mean_aep_GWh": mean_aep,
+        "p50_GWh": p50,
+        "p90_GWh": p90,
+        "std_dev": std_dev,
+    }
